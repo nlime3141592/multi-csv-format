@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -6,7 +7,38 @@ namespace nl
 {
     public class Program
     {
+        private static void TryPrint<T>(MultiCSVReader reader)
+        {
+            List<T> list;
+
+            if (reader.TryParseContents<T>(out list))
+            {
+                foreach (T element in list)
+                {
+                    Console.WriteLine($"{element.ToString()}");
+                }
+            }
+
+            reader.TryParseEndOfLine();
+        }
+
         private static void Main(string[] args)
+        {
+            string path3 = @"D:\Programming\multi-csv-format\multicsv\test3.multicsv";
+
+            FileStream fs = new FileStream(path3, FileMode.Open, FileAccess.Read, FileShare.Read);
+            MultiCSVReader rd = new MultiCSVReader(fs);
+
+            fs.Position = 0;
+
+            TryPrint<Player>(rd);
+            TryPrint<Item>(rd);
+            TryPrint<Achivement>(rd);
+
+            Console.WriteLine("Program Ends.");
+        }
+
+        private static void Main3(string[] args)
         {
             string path1 = @"D:\Programming\multi-csv-format\multicsv\test1.multicsv";
             string path2 = @"D:\Programming\multi-csv-format\multicsv\test2.multicsv";
@@ -16,7 +48,7 @@ namespace nl
             byte[] buffer = new byte[fs.Length];
             int rdLength = fs.Read(buffer, 0, buffer.Length);
             fs.Close();
-            
+
             char[] chars = Decoding.ToUnicodeFromUtf8(buffer);
 
             fs = new FileStream(path2, FileMode.Create, FileAccess.Write);
@@ -32,12 +64,15 @@ namespace nl
             byte[] utf16le = new byte[] { 0x48, 0xC5, 0x55, 0xB1, 0x58, 0xD5, 0x38, 0xC1, 0x94, 0xC6 };
             byte[] utf16be = new byte[] { 0xC5, 0x48, 0xB1, 0x55, 0xD5, 0x58, 0xC1, 0x38, 0xC6, 0x94 };
 
-            char[] message1 = Decoding.ToUnicodeFromUtf8(utf8);
-            char[] message2 = Decoding.ToUnicodeFromUtf16Le(utf16le);
-            char[] message3 = Decoding.ToUnicodeFromUtf16Be(utf16be);
-            Console.WriteLine(message1);
-            Console.WriteLine(message2);
-            Console.WriteLine(message3);
+            // char[] message1 = Decoding.ToUnicodeFromUtf8(utf8);
+            // char[] message2 = Decoding.ToUnicodeFromUtf16Le(utf16le);
+            // char[] message3 = Decoding.ToUnicodeFromUtf16Be(utf16be);
+            // Console.WriteLine(message1);
+            // Console.WriteLine(message2);
+            // Console.WriteLine(message3);
+
+            int length1 = Encoding.UTF8.GetCharCount(utf8, 0, utf8.Length);
+            Console.WriteLine(length1);
         }
 
         private static void Main1(string[] args)
