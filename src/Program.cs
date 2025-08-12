@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable 219
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -7,19 +9,22 @@ namespace nl
 {
     public class Program
     {
-        private static void TryPrint<T>(MultiCSVReader reader)
+        private static bool TryPrint<T>(MultiCSVReader reader)
         {
             List<T> list;
 
-            if (reader.TryParseContents<T>(out list))
+            if (reader.TryParseTable<T>(out list))
             {
+                Console.WriteLine("TryPrint OK");
                 foreach (T element in list)
                 {
-                    Console.WriteLine($"{element.ToString()}");
+                    Console.WriteLine($"{element.LogFields()}");
                 }
+
+                return true;
             }
 
-            reader.TryParseEndOfLine();
+            return false;
         }
 
         private static void Main(string[] args)
@@ -29,11 +34,43 @@ namespace nl
             FileStream fs = new FileStream(path3, FileMode.Open, FileAccess.Read, FileShare.Read);
             MultiCSVReader rd = new MultiCSVReader(fs);
 
-            fs.Position = 0;
+            // TryPrint<Player>(rd);
+            // TryPrint<Item>(rd);
+            // TryPrint<Achivement>(rd);
 
-            TryPrint<Player>(rd);
-            TryPrint<Item>(rd);
-            TryPrint<Achivement>(rd);
+            int lpcnt = 5;
+            int sccnt = 0;
+            Random prng = new Random();
+
+            for (int i = 0; i < lpcnt; ++i)
+            {
+                switch (prng.Next(0, 3))
+                {
+                    case 0:
+                        if (TryPrint<Player>(rd))
+                        {
+                            ++sccnt;
+                        }
+                        break;
+                    case 1:
+                        if (TryPrint<Item>(rd))
+                        {
+                            ++sccnt;
+                        }
+                        break;
+                    case 2:
+                        if (TryPrint<Achivement>(rd))
+                        {
+                            ++sccnt;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            rd.Close();
+            Console.WriteLine($"{sccnt}/{lpcnt}");
 
             Console.WriteLine("Program Ends.");
         }

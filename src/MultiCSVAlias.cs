@@ -30,10 +30,5 @@ namespace nl
         {
 
         }
-
-        public override string ToString()
-        {
-            return $"{alias}:{index}";
-        }
     }
 }

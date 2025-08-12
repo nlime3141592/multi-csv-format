@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Text;
+
 namespace nl
 {
     // TODO: 코드 기본 로직 완성 후 예외 처리 문제를 고민할 것.
@@ -13,6 +13,7 @@ namespace nl
 
         private Stream _stream;
         private StringBuilder _builder;
+        private Dictionary<string, MultiCSVAlias> _aliasMap;
 
         private byte[] _byteBuffer;
         private int _byteIdx;
@@ -37,9 +38,58 @@ namespace nl
 
             _byteIdx = -1;
             _byteLen = 0;
+
+            TryCreateAliasMap(out _aliasMap);
         }
 
-        public bool ContainsAlias(string[] aliases, string alias)
+        public void Close()
+        {
+            _stream.Close();
+        }
+
+        private bool TryCreateAliasMap(out Dictionary<string, MultiCSVAlias> map)
+        {
+            string[] aliases;
+            Dictionary<string, MultiCSVAlias> aliasMap = new Dictionary<string, MultiCSVAlias>();
+            map = aliasMap;
+
+            _stream.Position = 0;
+
+            while (ReadBuffer() > 0)
+            {
+                if (!EqualsNextChar('#', false))
+                {
+                    ++_byteIdx;
+                    continue;
+                }
+
+                long position = _stream.Position - _byteLen + _byteIdx + 1;
+
+                if (!TryParseAliasRecord(out aliases))
+                {
+                    _stream.Position = 0;
+                    _byteIdx = -1;
+                    _byteLen = 0;
+                    return false;
+                }
+
+                MultiCSVAlias parent = new MultiCSVAlias(aliases[0], position);
+                aliasMap.Add(aliases[0], parent);
+
+                for (int i = 1; i < aliases.Length; ++i)
+                {
+                    aliasMap.Add(aliases[i], new MultiCSVAlias(aliases[i], position, parent));
+                }
+            }
+
+            _stream.Position = 0;
+            _byteIdx = -1;
+            _byteLen = 0;
+
+            return true;
+        }
+
+        private bool ContainsAlias(string[] aliases, string alias)
         {
             for (int i = 0; i < aliases.Length; ++i)
             {
@@ -54,6 +104,17 @@ namespace nl
 
         public bool TryParseTable<T>(out List<T> records)
         {
+            if (!_aliasMap.ContainsKey(typeof(T).Name))
+            {
+                // cannot found table
+                records = null;
+                return false;
+            }
+
+            _stream.Position = Math.Abs(_aliasMap[typeof(T).Name].index);
+            _byteIdx = -1;
+            _byteLen = 0;
+
             string[] aliases;
             List<T> list = new List<T>(0);
 
@@ -82,7 +143,7 @@ namespace nl
             return true;
         }
 
-        public bool TryParseAliasRecord(out string[] aliases)
+        private bool TryParseAliasRecord(out string[] aliases)
         {
             string[] headers;
 
@@ -106,7 +167,7 @@ namespace nl
             return true;
         }
 
-        public bool TryParseContents<T>(out List<T> contents)
+        private bool TryParseContents<T>(out List<T> contents)
         {
             List<T> list = new List<T>(0);
 
@@ -153,7 +214,7 @@ namespace nl
             return true;
         }
 
-        public bool TryParseHeaderRecord(out string[] headers)
+        private bool TryParseHeaderRecord(out string[] headers)
         {
             _builder.Clear();
 
@@ -180,7 +241,7 @@ namespace nl
             return true;
         }
 
-        public bool TryParseDataRecord(out string[] data)
+        private bool TryParseDataRecord(out string[] data)
         {
             _builder.Clear();
 
@@ -207,7 +268,7 @@ namespace nl
             return true;
         }
 
-        public bool EqualsNextChar(char c, bool flushWhenEquals = false)
+        private bool EqualsNextChar(char c, bool flushWhenEquals = false)
         {
             if (ReadBuffer() == 0)
             {
@@ -229,7 +290,7 @@ namespace nl
             return true;
         }
 
-        public bool TryParseEndOfLine()
+        private bool TryParseEndOfLine()
         {
             if (ReadBuffer() == 0)
             {
@@ -251,7 +312,7 @@ namespace nl
             }
         }
 
-        public int ReadBuffer()
+        private int ReadBuffer()
         {
             if (_byteIdx + 1 < _byteLen)
             {
@@ -279,7 +340,7 @@ namespace nl
             return _byteLen;
         }
 
-        public void FlushBuffer()
+        private void FlushBuffer()
         {
             int distance = _byteIdx + 1;
 
@@ -295,7 +356,7 @@ namespace nl
             _byteLen -= distance;
         }
 
-        public void PushToBuilder()
+        private void PushToBuilder()
         {
             int i = 0;
 
@@ -370,7 +431,7 @@ namespace nl
             _byteIdx = -1;
         }
 
-        public bool TryCreateInstance<T>(out T instance, string[] headers, string[] data)
+        private bool TryCreateInstance<T>(out T instance, string[] headers, string[] data)
         {
             T inst = Activator.CreateInstance<T>();
 
