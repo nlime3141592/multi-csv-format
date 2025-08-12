@@ -1,0 +1,14 @@
+#Item
+sword,1,4
+dagger,1,3
+pencil,3,9
+
+#Achivement
+Hello World!,,True,1
+Bye World!,delete account,False,99
+
+#Player
+alice,12,1500
+bob,13,2000
+mallory,16,3200
+

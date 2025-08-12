@@ -9,68 +9,35 @@ namespace nl
 {
     public class Program
     {
-        private static bool TryPrint<T>(MultiCSVReader reader)
-        {
-            List<T> list;
-
-            if (reader.TryParseTable<T>(out list))
-            {
-                Console.WriteLine("TryPrint OK");
-                foreach (T element in list)
-                {
-                    Console.WriteLine($"{element.LogFields()}");
-                }
-
-                return true;
-            }
-
-            return false;
-        }
-
         private static void Main(string[] args)
         {
             string path3 = @"D:\Programming\multi-csv-format\multicsv\test3.multicsv";
+            string path4 = @"D:\Programming\multi-csv-format\multicsv\test4.multicsv";
 
             FileStream fs = new FileStream(path3, FileMode.Open, FileAccess.Read, FileShare.Read);
             MultiCSVReader rd = new MultiCSVReader(fs);
 
-            // TryPrint<Player>(rd);
-            // TryPrint<Item>(rd);
-            // TryPrint<Achivement>(rd);
+            List<Item> items;
+            List<Achivement> achivements;
+            List<Player> players;
 
-            int lpcnt = 5;
-            int sccnt = 0;
-            Random prng = new Random();
-
-            for (int i = 0; i < lpcnt; ++i)
-            {
-                switch (prng.Next(0, 3))
-                {
-                    case 0:
-                        if (TryPrint<Player>(rd))
-                        {
-                            ++sccnt;
-                        }
-                        break;
-                    case 1:
-                        if (TryPrint<Item>(rd))
-                        {
-                            ++sccnt;
-                        }
-                        break;
-                    case 2:
-                        if (TryPrint<Achivement>(rd))
-                        {
-                            ++sccnt;
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            }
+            rd.TryParseTable<Item>(out items);
+            rd.TryParseTable(out achivements);
+            rd.TryParseTable(out players);
 
             rd.Close();
-            Console.WriteLine($"{sccnt}/{lpcnt}");
+            fs.Close();
+
+            fs = new FileStream(path4, FileMode.Create, FileAccess.Write);
+            MultiCSVWriter wr = new MultiCSVWriter(fs);
+
+            wr.TryWriteTable<Item>(items);
+            wr.TryWriteTable<Achivement>(achivements);
+            wr.TryWriteTable<Player>(players);
+            wr.TryWriteTable<Item>(items);
+
+            wr.Close();
+            fs.Close();
 
             Console.WriteLine("Program Ends.");
         }
