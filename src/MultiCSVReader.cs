@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -13,7 +14,7 @@ namespace nl
 
         private Stream _stream;
         private StringBuilder _builder;
-        private Dictionary<string, MultiCSVAlias> _aliasMap;
+        private Dictionary<string, Dictionary<string, long>> _aliasMap;
 
         private byte[] _byteBuffer;
         private int _byteIdx;
@@ -47,10 +48,10 @@ namespace nl
             _stream.Close();
         }
 
-        private bool TryCreateAliasMap(out Dictionary<string, MultiCSVAlias> map)
+        private bool TryCreateAliasMap(out Dictionary<string, Dictionary<string, long>> map)
         {
             string[] aliases;
-            Dictionary<string, MultiCSVAlias> aliasMap = new Dictionary<string, MultiCSVAlias>();
+            Dictionary<string, Dictionary<string, long>> aliasMap = new Dictionary<string, Dictionary<string, long>>(16);
             map = aliasMap;
 
             _stream.Position = 0;
@@ -73,12 +74,28 @@ namespace nl
                     return false;
                 }
 
-                MultiCSVAlias parent = new MultiCSVAlias(aliases[0], position);
-                aliasMap.Add(aliases[0], parent);
+                if (!aliasMap.ContainsKey(aliases[0]))
+                {
+                    aliasMap.Add(aliases[0], new Dictionary<string, long>(16));
+                    aliasMap[aliases[0]].Add(string.Empty, -position - 1);
+                }
+
+                if (aliases.Length == 1)
+                {
+                    if (aliasMap[aliases[0]][string.Empty] >= 0)
+                    {
+                        _stream.Position = 0;
+                        _byteIdx = -1;
+                        _byteLen = 0;
+                        return false;
+                    }
+
+                    aliasMap[aliases[0]][string.Empty] = position;
+                }
 
                 for (int i = 1; i < aliases.Length; ++i)
                 {
-                    aliasMap.Add(aliases[i], new MultiCSVAlias(aliases[i], position, parent));
+                    aliasMap[aliases[0]].Add(aliases[i], position);
                 }
             }
 
@@ -89,11 +106,23 @@ namespace nl
             return true;
         }
 
-        private bool ContainsAlias(string[] aliases, string alias)
+        private bool ContainsAlias<T>(string[] aliases, string aliasOrNull)
         {
+            Type type = typeof(T);
+
+            if (aliasOrNull == null || aliasOrNull.Equals(string.Empty))
+            {
+                return true;
+            }
+
+            if (!_aliasMap.ContainsKey(type.Name))
+            {
+                return false;
+            }
+
             for (int i = 0; i < aliases.Length; ++i)
             {
-                if (aliases[i].Equals(alias))
+                if (aliases[i].Equals(aliasOrNull))
                 {
                     return true;
                 }
@@ -102,16 +131,48 @@ namespace nl
             return false;
         }
 
-        public bool TryParseTable<T>(out List<T> records)
+        private long GetTableIndex<T>(string aliasOrNull)
         {
-            if (!_aliasMap.ContainsKey(typeof(T).Name))
+            Type type = typeof(T);
+
+            if (aliasOrNull == null)
             {
-                // cannot found table
+                aliasOrNull = string.Empty;
+            }
+
+            if (!_aliasMap.ContainsKey(type.Name))
+            {
+                return -1;
+            }
+
+            if (!_aliasMap[type.Name].ContainsKey(aliasOrNull))
+            {
+                return -1;
+            }
+
+            long position = _aliasMap[type.Name][aliasOrNull];
+
+            if (position < 0)
+            {
+                return -(position + 1);
+            }
+            else
+            {
+                return position;
+            }
+        }
+
+        public bool TryParseTable<T>(out List<T> records, string aliasOrNull = null)
+        {
+            long tableIndex = GetTableIndex<T>(aliasOrNull);
+
+            if (tableIndex < 0)
+            {
                 records = null;
                 return false;
             }
 
-            _stream.Position = Math.Abs(_aliasMap[typeof(T).Name].index);
+            _stream.Position = tableIndex;
             _byteIdx = -1;
             _byteLen = 0;
 
@@ -123,7 +184,7 @@ namespace nl
                 records = null;
                 return false;
             }
-            if (!ContainsAlias(aliases, typeof(T).Name))
+            if (!ContainsAlias<T>(aliases, aliasOrNull))
             {
                 records = null;
                 return false;

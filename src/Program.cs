@@ -11,8 +11,8 @@ namespace nl
     {
         private static void Main(string[] args)
         {
-            string path3 = @"D:\Programming\multi-csv-format\multicsv\test3.multicsv";
-            string path4 = @"D:\Programming\multi-csv-format\multicsv\test4.multicsv";
+            string path3 = @"D:\Programming\multi-csv-format\multicsv\test4.multicsv";
+            string path4 = @"D:\Programming\multi-csv-format\multicsv\test5.multicsv";
 
             FileStream fs = new FileStream(path3, FileMode.Open, FileAccess.Read, FileShare.Read);
             MultiCSVReader rd = new MultiCSVReader(fs);
@@ -21,9 +21,9 @@ namespace nl
             List<Achivement> achivements;
             List<Player> players;
 
-            rd.TryParseTable<Item>(out items);
-            rd.TryParseTable(out achivements);
-            rd.TryParseTable(out players);
+            if (!rd.TryParseTable(out items)) Console.WriteLine("Falied 1");
+            if (!rd.TryParseTable(out achivements)) Console.WriteLine("Falied 2");
+            if (!rd.TryParseTable(out players)) Console.WriteLine("Falied 3");
 
             rd.Close();
             fs.Close();
@@ -31,10 +31,10 @@ namespace nl
             fs = new FileStream(path4, FileMode.Create, FileAccess.Write);
             MultiCSVWriter wr = new MultiCSVWriter(fs);
 
-            wr.TryWriteTable<Item>(items);
+            wr.TryWriteTable<Item>(items, "kt0");
             wr.TryWriteTable<Achivement>(achivements);
             wr.TryWriteTable<Player>(players);
-            wr.TryWriteTable<Item>(items);
+            wr.TryWriteTable<Item>(items, "kt1");
 
             wr.Close();
             fs.Close();

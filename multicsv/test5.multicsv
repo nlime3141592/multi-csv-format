@@ -1,4 +1,4 @@
-#Item,slot0
+#Item,kt0
 name,count,grade
 sword,1,4
 dagger,1,3
@@ -15,9 +15,9 @@ alice,12,1500
 bob,13,2000
 mallory,16,3200
 
-#Item,slot1
+#Item,kt1
 name,count,grade
 sword,1,4
 dagger,1,3
-pencil,3,14
+pencil,3,9
 
